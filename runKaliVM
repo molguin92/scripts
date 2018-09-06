@@ -1,0 +1,47 @@
+#!/bin/bash
+# Script for automatically running a VBox VM in headless mode and SSH into it
+
+# start VM
+VMNAME="KaliLinux"
+echo "Starting Kali Linux Virtual Machine"
+VBoxHeadless --startvm $VMNAME > /dev/null 2>&1 &
+
+# show a spinner while it warms up
+WAIT=20
+echo "Wait $WAIT seconds for VM to warm up..."
+echo 
+sleep $WAIT &
+PID=$!
+i=1
+sp="/-\|"
+echo -n " "
+while [ -d "/proc/$PID" ];
+do
+    printf "\b${sp:i++%${#sp}:1}"
+    sleep 1
+done
+echo 
+echo
+echo "Warmed up, opening SSH connection!"
+echo 
+
+# connect to the VM
+ssh -X KaliVM "echo \"Network connection status:\" && echo && nmcli c && tilix"
+
+# ask user if they want to shut down VM
+echo "Disconnected from Virtual Machine."
+echo
+read -p "Shut down [yN]? " -n 1 -r
+echo
+echo
+if [[ $REPLY =~ ^[Yy]$ ]];
+then
+    # shut down
+    echo "Shutting down Virtual Machine..."
+    VBoxManage controlvm $VMNAME poweroff
+    echo "Done!"
+else
+    # don't shut down
+    echo "Keeping Virtual Machine online."
+    echo "To shut down, please run 'VBoxManage controlvm $VMNAME poweroff' manually."
+fi

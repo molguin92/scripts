@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+from subprocess import run, PIPE, Popen
+from multiprocessing.pool import Pool
+from itertools import repeat
+from sys import argv
+import shlex
+
+def _run_adb(device: str, args: list) -> None:
+    cmd = ' '.join(['adb', '-s {}'.format(device)] + args)
+    print(cmd)
+    run(shlex.split(cmd), stdout=None, encoding='utf-8')
+
+def parallel_adb(args: list) -> None:
+    adb_devices = run(['adb', 'devices'], stdout=PIPE, encoding='utf-8')
+    devices = list()
+
+    for line in adb_devices.stdout.splitlines():
+        elems = line.split('\t')
+        if elems[-1] != 'device':
+            continue
+
+        devices.append(elems[0])
+    
+    with Pool(len(devices)) as pool:
+        pool.starmap(
+            _run_adb, zip(devices, repeat(args))
+        )
+
+if __name__ == '__main__':
+    if len(argv) < 2:
+        exit(0)
+
+    parallel_adb(argv[1:])
+
